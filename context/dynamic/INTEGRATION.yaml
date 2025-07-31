@@ -1,0 +1,127 @@
+# AudioWorkstation Integration Context
+# Version: 1.0
+# Last Updated: 2025-01-31
+
+integration_summary:
+  total_integrations: 8
+  ready: 3
+  in_progress: 2
+  planned: 3
+
+# Core Framework Integrations
+core_frameworks:
+  SwiftUI:
+	version: "6.2+"
+	status: "integrated"
+	purpose: "UI framework for all platforms"
+	
+  AVAudioEngine:
+	version: "System"
+	status: "planned"
+	purpose: "Core audio processing engine"
+	timeline: "Phase 2"
+	
+  SwiftData:
+	version: "Latest"
+	status: "integrated"
+	purpose: "Persistent storage for projects"
+	
+  Combine:
+	version: "System"
+	status: "integrated"
+	purpose: "Reactive state management"
+
+# Audio Integrations
+audio_integrations:
+  AVAudioUnitSampler:
+	status: "planned"
+	purpose: "Built-in sampler instrument"
+	timeline: "Phase 2"
+	
+  DLS_Synth:
+	status: "planned"
+	purpose: "MIDI playback via DLS"
+	timeline: "Phase 2"
+	blockers: ["Audio engine implementation"]
+	
+  SFZ_Support:
+	status: "future"
+	purpose: "Advanced sampler format"
+	timeline: "Phase 3"
+	complexity: "HIGH"
+	dependencies: ["Custom parser", "Sample streaming"]
+
+# Platform Integrations
+platform_features:
+  CloudKit:
+	status: "excluded"
+	reason: "No cloud sync requirement"
+	
+  StoreKit:
+	status: "excluded"
+	reason: "No monetization planned"
+	
+  Metal:
+	status: "future"
+	purpose: "GPU-accelerated DSP"
+	timeline: "Phase 3"
+	
+  AUv3:
+	status: "future"
+	purpose: "Audio Unit plugin hosting"
+	timeline: "Phase 3"
+
+# External Dependencies
+external_dependencies:
+  # None currently - pure Apple frameworks
+
+# Build System
+build_configuration:
+  minimum_deployments:
+	macOS: "15.0"
+	iOS: "18.0"
+	iPadOS: "18.0"
+	tvOS: "18.0"
+  
+  swift_version: "6.0"
+  xcode_version: "16.0+"
+  
+  architecture:
+	primary: "arm64"
+	catalyst: "not_supported"
+
+# Future Integrations
+future_integrations:
+  MIDI_2.0:
+	priority: "MEDIUM"
+	timeline: "2025 Q3"
+	purpose: "Modern MIDI protocol support"
+	
+  AudioUnit_v3:
+	priority: "HIGH"
+	timeline: "Phase 3"
+	purpose: "Plugin ecosystem"
+	
+  CoreML:
+	priority: "LOW"
+	timeline: "Future"
+	purpose: "AI-assisted mixing/mastering"
+	
+  SharedWithYou:
+	priority: "LOW"
+	timeline: "Future"
+	purpose: "Collaborative features"
+
+# Integration Health Checks
+health_checks:
+  SwiftData_Relationships:
+	status: "working"
+	notes: "Manual array conversion needed for Lists"
+	
+  Cross_Platform_UI:
+	status: "working"
+	notes: "Platform conditionals properly implemented"
+	
+  Audio_Engine:
+	status: "not_started"
+	notes: "Placeholder structure only"
