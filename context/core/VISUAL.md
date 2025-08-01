@@ -1,168 +1,350 @@
 # AudioWorkstation Visual Design Context
 
-**Purpose**: Complete visual design system and UI specifications  
-**Version**: 1.0  
-**Design Language**: WWDC25 Pro App + Liquid Glass (Glassmorphic)  
+**Purpose**: UI specifications and design system for SwiftUI DAW  
+**Version**: 2.0  
+**Design Language**: Modern Apple Pro App Style  
 **Last Updated**: 2025-01-31
 
-## Visual Hierarchy
+## Current Visual Implementation
+
+AudioWorkstation follows Apple's pro app design patterns seen in Logic Pro, Final Cut Pro, and Xcode. The UI is currently implemented as a functional shell with clean layouts but minimal styling.
+
+## Layout Architecture
+
+### Main Window Structure (macOS)
 ```
-Z-LAYERS (back→front):
-├─[0] Background (app background)
-├─[1] Content (timeline, tracks)
-├─[2] Controls (buttons, sliders)
-├─[3] Panels (inspector, sidebar)
-└─[4] Overlays (tooltips, popovers)
-```
-
-## Quick Reference Tables
-
-### Color Palette
-| Element | Light Mode | Dark Mode | Notes |
-|---------|------------|-----------|-------|
-| **Background** | systemBackground | black | Base layer |
-| **Panel Glass** | ultraThinMaterial | ultraThinMaterial | Glassmorphic blur |
-| **Track Default** | systemBlue | systemBlue | User customizable |
-| **Selected** | accentColor | accentColor | Platform accent |
-| **Hover State** | secondary.opacity(0.2) | secondary.opacity(0.3) | macOS only |
-
-### Spacing System
-| Token | Value | Usage |
-|-------|-------|-------|
-| **micro** | 4pt | Icon padding |
-| **small** | 8pt | Internal component padding |
-| **medium** | 16pt | Component spacing |
-| **large** | 24pt | Section gaps |
-| **xlarge** | 32pt | Major sections |
-
-### Typography Scale
-| Style | Size | Weight | Line Height | Usage |
-|-------|------|--------|-------------|-------|
-| **Title** | 28pt | Bold | 34pt | Main sections |
-| **Headline** | 20pt | Semibold | 24pt | Panel headers |
-| **Body** | 16pt | Regular | 20pt | General text |
-| **Caption** | 13pt | Regular | 16pt | Labels, hints |
-| **Micro** | 11pt | Regular | 14pt | Timeline markers |
-
-## Platform-Specific Adjustments
-
-### macOS
-```yaml
-panel_corner_radius: 16pt
-blur_intensity: full
-hover_states: enabled
-cursor_changes: enabled
-resize_handles: visible
+┌─────────────────────────────────────────────────────────┐
+│ Toolbar                                    Min/Max/Close │
+├─────────────┬───────────────────────────────────────────┤
+│             │                                            │
+│  Sidebar    │         Content Area                      │
+│  (200pt)    │                                            │
+│             ├───────────────────────────────┬───────────┤
+│ • Browser   │                               │           │
+│ • Tracks    │      Timeline/Tracks          │ Inspector │
+│ • Mixer     │         (Flexible)            │  (300pt)  │
+│             │                               │           │
+├─────────────┴───────────────────────────────┴───────────┤
+│ Transport Controls            Status Bar                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
-### iPadOS
-```yaml
-panel_corner_radius: 12pt
-blur_intensity: medium
-touch_targets: 44pt_minimum
-drag_handles: visible
-compact_mode: adaptive
-```
-
-### iOS
-```yaml
-panel_corner_radius: 8pt
-blur_intensity: minimal
-navigation: bottom_sheet
-inspector: modal_sheet
-simplified_controls: true
-```
-
-### tvOS
-```yaml
-panel_corner_radius: 20pt
-blur_intensity: high_contrast
-focus_rings: always_visible
-text_size: +4pt_from_base
-simplified_layout: true
+### Adaptive Layouts
+```swift
+// Current Implementation
+#if os(macOS)
+NavigationSplitView {
+    WorkstationSidebar()
+} content: {
+    TracksWorkspace()
+} detail: {
+    InspectorView()
+}
+#else
+// iOS uses automatic adaptation
+NavigationSplitView { ... }
+    .navigationSplitViewStyle(.automatic)
+#endif
 ```
 
 ## Component Specifications
 
-### Track Lane
+### Sidebar (Implemented)
 ```yaml
-height: 60pt
-padding: 8pt
-background: track_color.opacity(0.1)
-border: 1pt track_color.opacity(0.3)
-selected_border: 2pt accentColor
-hover_overlay: white.opacity(0.05) # macOS only
+Width: 200pt (resizable on macOS)
+Background: System background
+Sections:
+  - Browser (SF Symbol: folder)
+  - Tracks (SF Symbol: music.note.list)
+  - Mixer (SF Symbol: slider.horizontal.3)
+Style: Standard List with sections
+Selection: Accent color highlight
 ```
 
-### Region Block
+### Track List (Partially Styled)
 ```yaml
-corner_radius: 4pt
-background: track_color.opacity(0.8)
-border: 1pt track_color
-selected_border: 2pt accentColor
-min_width: 20pt
-resize_handles: 4pt x 20pt # future
+Track Row Height: 60pt
+Components:
+  - Track Icon: 20x20pt (music.note or waveform)
+  - Track Name: System font, primary label
+  - Mute Button: 32x32pt (speaker.slash when muted)
+  - Solo Button: 32x32pt (headphones)
+  - Record Button: 32x32pt (record.circle)
+  - Volume Slider: 100pt wide
+  - Pan Knob: 44x44pt
+Spacing: 8pt between controls
+Background: Alternating row colors (subtle)
 ```
 
-### Inspector Panel
+### Transport Controls (UI Complete)
 ```yaml
-width:
-  macOS: 320pt
-  iPadOS: 280pt_to_360pt
-  iOS: full_width
-background: ultraThinMaterial
-sections:
-  header_height: 44pt
-  padding: 16pt
-  separator: 1pt_gray.opacity(0.2)
+Container: 
+  Height: 60pt
+  Background: System secondary background
+  
+Buttons:
+  Size: 44x44pt (large hit targets)
+  Style: System default with SF Symbols
+  - Play: play.fill / pause.fill (toggles)
+  - Stop: stop.fill
+  - Record: record.circle (red when active)
+  
+Time Display:
+  Font: SF Mono, 18pt
+  Format: "00:00.000"
+  Color: Primary label
 ```
 
-### Transport Controls
+### Timeline Canvas (Minimal Implementation)
 ```yaml
-button_size:
-  macOS: 32pt
-  iOS/iPadOS: 44pt
-  tvOS: 64pt
-spacing: 8pt
-background: ultraThinMaterial
-padding: 12pt
+Current State: Gray background with grid lines
+Grid:
+  Major Lines: Every beat, 0.5pt, gray.opacity(0.3)
+  Minor Lines: Subdivisions, 0.25pt, gray.opacity(0.1)
+  
+Planned:
+  Background: RGB(30, 30, 35) dark mode
+  Playhead: 2pt red line
+  Regions: Rounded rectangles with track color
 ```
 
-## Glassmorphic Design Rules
+## Color System
 
-1. **Layering**: Each panel must have clear visual separation through:
-   - Background blur (ultraThinMaterial)
-   - Subtle drop shadow (color: black.opacity(0.1), radius: 8, y: 2)
-   - 1pt border (gray.opacity(0.1))
+### Current Implementation
+```swift
+// System colors used throughout
+Color.accentColor      // User's system accent
+Color.primary          // Labels and text
+Color.secondary        // Subdued elements
+Color(.systemGray)     // Borders and dividers
+Color(.systemGray2)    // Alternate row backgrounds
+```
 
-2. **Depth Perception**:
-   - Closer elements: stronger shadows, higher blur
-   - Further elements: softer shadows, lower blur
-   - Active elements: additional glow effect
+### Track Colors (Defined in Model)
+```swift
+let trackColors = [
+    "blue": Color.blue,
+    "green": Color.green,
+    "red": Color.red,
+    "orange": Color.orange,
+    "purple": Color.purple,
+    "pink": Color.pink,
+    "yellow": Color.yellow,
+    "gray": Color.gray
+]
+```
 
-3. **Performance Optimization**:
-   - iOS: Reduce to thinMaterial in low power mode
-   - tvOS: Use high contrast variant for readability
-   - Limit nested glass effects to 2 levels max
+## Typography
+
+### Current Usage
+```yaml
+Navigation Titles: .largeTitle (Tracks, Mixer, Browser)
+Section Headers: .headline 
+Track Names: .body
+Control Labels: .caption
+Time Display: .system(.body, design: .monospaced)
+Status Text: .footnote
+```
+
+### Missing Typography
+- No custom fonts
+- No dynamic type support
+- Limited text hierarchy
+
+## Icons and Symbols
+
+### SF Symbols in Use
+```yaml
+Navigation:
+  folder: Browser
+  music.note.list: Tracks  
+  slider.horizontal.3: Mixer
+
+Track Controls:
+  speaker.slash: Mute (on)
+  speaker.wave.2: Mute (off)
+  headphones: Solo
+  record.circle: Record Enable
+  
+Transport:
+  play.fill: Play
+  pause.fill: Pause
+  stop.fill: Stop
+  record.circle: Record
+
+Track Types:
+  music.note: MIDI Track
+  waveform: Audio Track
+  crown: Master Track
+```
+
+## Current Styling Gaps
+
+### What's Missing
+1. **Visual Polish**: Very utilitarian, needs refinement
+2. **Dark Mode Optimization**: Uses system colors but not optimized
+3. **Hover States**: No visual feedback on macOS
+4. **Focus States**: Basic system focus rings only
+5. **Animation**: No transitions or smooth updates
+6. **Custom Drawing**: Timeline is just gray canvas
+7. **Progress Indicators**: No loading or processing states
+
+### Needed Enhancements
+
+#### Professional Appearance
+```swift
+// Add subtle backgrounds
+.background(Color(.systemGray6))
+.clipShape(RoundedRectangle(cornerRadius: 8))
+
+// Add shadows for depth
+.shadow(color: .black.opacity(0.1), radius: 2, y: 1)
+
+// Improve buttons
+.buttonStyle(.borderless)
+.controlSize(.large)
+```
+
+#### Track Lane Styling
+```swift
+// Planned region appearance
+RoundedRectangle(cornerRadius: 4)
+    .fill(trackColor.opacity(0.8))
+    .overlay(
+        RoundedRectangle(cornerRadius: 4)
+            .strokeBorder(trackColor, lineWidth: 1)
+    )
+    .shadow(color: .black.opacity(0.2), radius: 1, y: 1)
+```
+
+## Platform Adaptations
+
+### macOS Specific
+- Window min size: 800x600
+- Resizable panes with dividers
+- Hover states on buttons
+- Keyboard focus navigation
+- Menu bar integration
+
+### iOS/iPadOS Specific  
+- Touch-friendly 44pt targets
+- Swipe gestures planned
+- Full-screen modes
+- Simplified inspector
+
+### tvOS Specific
+- Focus-based navigation
+- Larger text and controls
+- High contrast mode
+- Simplified layout
 
 ## Animation Specifications
 
-### Standard Transitions
-```yaml
-navigation: 0.3s easeInOut
-hover_states: 0.15s easeOut
-selection: 0.2s easeInOut
-panel_resize: realtime (no animation)
-focus_change: 0.25s easeInOut # tvOS
+### Current State
+No animations implemented
+
+### Planned Animations
+```swift
+// Smooth value changes
+.animation(.easeInOut(duration: 0.2), value: volume)
+
+// Transport state changes  
+.animation(.spring(response: 0.3), value: isPlaying)
+
+// View transitions
+.transition(.asymmetric(
+    insertion: .move(edge: .trailing),
+    removal: .move(edge: .leading)
+))
 ```
 
-### Platform-Specific Animations
-- macOS: Full spring animations on hover/selection
-- iOS/iPadOS: Respect reduced motion settings
-- tvOS: Focus engine handles all animations
+## Accessibility
 
-## Icon System
-- Use SF Symbols exclusively
-- Weight: Regular for most, Medium for selected
-- Size: 20pt standard, 16pt compact, 24pt tvOS
-- Color: Primary for active, Secondary for inactive
+### Current Support
+- Basic VoiceOver labels
+- Standard control accessibility
+- System color compliance
+
+### Needed Improvements
+- Custom accessibility actions
+- Meaningful control descriptions
+- Keyboard shortcuts
+- High contrast mode
+- Reduced motion support
+
+## Visual Performance
+
+### Current Issues
+- No view caching
+- Frequent redraws
+- Large memory footprint for many tracks
+
+### Optimization Needed
+```swift
+// Lazy loading for track list
+LazyVStack {
+    ForEach(visibleTracks) { track in
+        TrackRowView(track: track)
+    }
+}
+
+// Canvas caching for timeline
+.drawingGroup() // Flatten view hierarchy
+```
+
+## Design Tokens
+
+### Spacing Scale
+```swift
+enum Spacing {
+    static let micro: CGFloat = 4
+    static let small: CGFloat = 8  
+    static let medium: CGFloat = 16
+    static let large: CGFloat = 24
+    static let xlarge: CGFloat = 32
+}
+```
+
+### Corner Radii
+```swift
+enum CornerRadius {
+    static let small: CGFloat = 4   // Regions
+    static let medium: CGFloat = 8  // Panels
+    static let large: CGFloat = 12  // Modals
+}
+```
+
+### Standard Sizes
+```swift
+enum Sizes {
+    static let trackHeight: CGFloat = 60
+    static let buttonSize: CGFloat = 44
+    static let sliderWidth: CGFloat = 100
+    static let sidebarWidth: CGFloat = 200
+    static let inspectorWidth: CGFloat = 300
+}
+```
+
+## Future Visual Enhancements
+
+### Professional Polish
+1. Gradient backgrounds for depth
+2. Subtle textures and patterns
+3. Glass morphism effects
+4. Smooth shadows and highlights
+
+### Advanced Visualizations
+1. Waveform rendering with peaks
+2. MIDI note visualization
+3. Spectrum analyzers
+4. VU meters
+
+### Motion Design
+1. Playhead smooth scrolling
+2. Region snap animations
+3. Track reorder animations
+4. Zoom transitions
+
+---
+
+**Current Reality**: The visual design is functional but basic. It follows Apple's design patterns but lacks the polish of a professional DAW. The foundation is solid for adding visual refinements without major architectural changes.

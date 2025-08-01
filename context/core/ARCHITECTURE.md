@@ -1,114 +1,334 @@
 # AudioWorkstation Architecture Context
 
-**Purpose**: Technical blueprint and system design rationale  
-**Version**: 1.0  
-**Status**: Alpha Experimental  
+**Purpose**: Technical blueprint for SwiftUI-based DAW with AVAudioEngine  
+**Version**: 2.0  
+**Status**: ~40% Implemented (UI Shell + Audio Structure)  
 **Last Updated**: 2025-01-31
 
-## Key Concepts (AI Quick Reference)
+## Executive Summary
 
-### Core Architecture Pattern
+AudioWorkstation is a modern Digital Audio Workstation built entirely in SwiftUI with AVAudioEngine for audio processing. The architecture prioritizes clean separation of concerns, reactive state management, and platform adaptability. Currently implements the UI shell and audio engine structure without actual audio processing.
+
+## Key Architecture Patterns
+
+### Core Stack
 ```
-SwiftUI + AVAudioEngine + SwiftData = Modern DAW
+SwiftUI + AVAudioEngine + SwiftData + Combine
+├── Pure SwiftUI (no UIKit/AppKit)
+├── Singleton Audio Engine (@MainActor)
+├── SwiftData Models (Project/Track/Region/MIDI)
+└── Observable State Management
 ```
 
-### Critical Design Elements
-1. **Cross-Platform SwiftUI** - Unified codebase for macOS/iOS/iPadOS/tvOS
-2. **AVAudioEngine Core** - Professional audio processing backbone
-3. **SwiftData Persistence** - Modern data layer for projects/tracks/regions
-4. **Adaptive Layouts** - Platform-specific UI optimizations
+### Design Principles
+1. **SwiftUI-First**: Every UI component is pure SwiftUI
+2. **Reactive State**: @Published properties drive UI updates
+3. **Platform Adaptive**: Single codebase, platform-specific enhancements
+4. **Type Safety**: Strong types throughout, no stringly-typed APIs
+5. **Prepared for Scale**: Architecture supports full DAW complexity
 
 ## System Architecture
 
-### Core Design Pattern
-Track-based sequencing architecture with region-based MIDI editing. Designed as macOS-first workstation with adaptive layouts for other Apple platforms.
+### Layer Architecture
+```
+┌─────────────────────────────────────┐
+│         App Layer (SwiftUI)         │
+├─────────────────────────────────────┤
+│  Presentation Layer (ViewModels)    │
+├─────────────────────────────────────┤
+│      Core Layer (Business Logic)    │
+├─────────────────────────────────────┤
+│     Infrastructure (Audio/Data)     │
+└─────────────────────────────────────┘
+```
 
 ### Component Architecture
 ```
-App Layer (SwiftUI)
-├── ContentView (Main Container)
-├── WorkstationSidebar (Navigation)
-├── TrackView (Timeline)
+AudioWorkstationApp
+├── ContentView (Main Workspace)
+│   ├── WorkstationSidebar
+│   │   ├── Project Browser
+│   │   ├── Track List
+│   │   └── Media Browser
+│   └── TracksWorkspace
+│       ├── TimelineView
+│       ├── TrackLanesView
+│       └── InspectorView
 ├── TransportControls
-└── Inspector (Context-sensitive)
+└── MenuCommands
 
-Core Layer
-├── AudioEngineService (AVAudioEngine wrapper)
-├── Models (SwiftData entities)
-└── Timeline State Management
-
-Data Layer (SwiftData)
-├── Project
-├── Track
-├── Region
-└── MIDINote
+Core Services
+├── AudioEngineService (Singleton)
+│   ├── AVAudioEngine
+│   ├── Mixer Architecture
+│   └── Track Management
+└── ProjectManager
+    ├── SwiftData Container
+    └── File Management
 ```
 
-## Technical Architecture
+## Audio Engine Architecture
 
-### State Management
-- Timeline state via @Published and Combine
-- Project data via SwiftData with @Query
-- Audio engine state centralized in AudioEngineService
-
-### Component Communication
-- SwiftUI environment objects for global state
-- Combine publishers for real-time updates
-- SwiftData for persistent state
-
-## Design Patterns
-
-### Pattern 1: Adaptive Platform Layouts
-```
-PURPOSE: Single codebase, platform-optimized UX
-IMPLEMENTATION: Conditional compilation and view modifiers
-BENEFITS: Native feel on each platform
+### Singleton Pattern
+```swift
+@MainActor
+class AudioEngineService: ObservableObject {
+    static let shared = AudioEngineService()
+    
+    @Published var isPlaying = false
+    @Published var isRecording = false
+    @Published var currentPosition: TimeInterval = 0
+    
+    private let engine = AVAudioEngine()
+    private let mainMixer = AVAudioMixerNode()
+}
 ```
 
-### Pattern 2: Future-Ready Audio Architecture
+### Mixer Node Graph (Planned)
 ```
-PURPOSE: Support planned SFZ sampler and DLS synth
-IMPLEMENTATION: Abstracted audio engine interface
-BENEFITS: Easy integration of new audio sources
+Input Sources                    Track Mixers              Main Mix
+┌──────────┐                    ┌─────────┐              ┌─────────┐
+│ File     │───────────────────▶│ Track 1 │──────┐       │         │
+│ Player   │                    └─────────┘      │       │  Main   │
+└──────────┘                                     ├──────▶│ Mixer   │──▶ Output
+┌──────────┐                    ┌─────────┐      │       │         │
+│ Audio    │───────────────────▶│ Track 2 │──────┘       └─────────┘
+│ Input    │                    └─────────┘
+└──────────┘                    
+                                ┌─────────┐
+                                │ Track N │──────┘
+                                └─────────┘
 ```
 
-## Anti-Patterns to Avoid
+### Thread Safety Strategy
+- Main thread UI updates via @MainActor
+- Audio processing on real-time thread
+- Lock-free audio buffers (future)
+- Dispatch queues for file I/O
 
-### ❌ NEVER: Force Desktop Paradigms on Mobile
+## SwiftUI Architecture
+
+### View Composition Pattern
+```swift
+struct ContentView: View {
+    @StateObject private var audioEngine = AudioEngineService.shared
+    @State private var selectedTrack: Track?
+    
+    var body: some View {
+        NavigationSplitView {
+            WorkstationSidebar()
+        } content: {
+            TracksWorkspace()
+        } detail: {
+            InspectorView(track: selectedTrack)
+        }
+    }
+}
 ```
-// WRONG
-VSplitView on iOS (crashes)
 
-// CORRECT
+### State Management Hierarchy
+```
+App State (@StateObject)
+├── AudioEngineService (Singleton)
+├── ProjectDocument (Current Project)
+└── WorkspaceState (UI State)
+
+View State (@State)
+├── Selection State
+├── Zoom/Scroll Position
+└── UI Toggles
+
+Environment Values
+├── ColorScheme
+├── SizeClass
+└── Platform Adaptations
+```
+
+### Platform Adaptations
+```swift
 #if os(macOS)
-	VSplitView { ... }
-#else
-	VStack { ... }
+    // Desktop-optimized with hover states, resizable panes
+    HSplitView { ... }
+#elseif os(iOS)
+    // Touch-optimized with gestures, full-screen modes
+    NavigationStack { ... }
 #endif
 ```
 
-### ❌ NEVER: Tight Audio-UI Coupling
-```
-// WRONG
-Direct AVAudioEngine calls in Views
+## Data Architecture
 
-// CORRECT
-AudioEngineService abstraction layer
+### SwiftData Schema
+```swift
+@Model
+class Project {
+    var id = UUID()
+    var name: String
+    var tempo: Double = 120.0
+    @Relationship(deleteRule: .cascade) 
+    var tracks: [Track] = []
+}
+
+@Model
+class Track {
+    var id = UUID()
+    var name: String
+    var trackType: TrackType
+    var volume: Float = 0.0
+    var pan: Float = 0.0
+    @Relationship(deleteRule: .cascade)
+    var regions: [Region] = []
+}
 ```
 
-## Architectural Decisions Log
+### Persistence Strategy
+- SwiftData for project/session data
+- File-based audio storage
+- CloudKit sync (future consideration)
+- Versioned schema migrations
+
+## Performance Architecture
+
+### UI Performance
+- Lazy loading for track lanes
+- Canvas-based timeline rendering
+- Virtualized track list
+- Debounced property updates
+
+### Audio Performance (Planned)
+- Pre-buffered file playback
+- Lock-free ring buffers
+- Optimized DSP chains
+- Background audio capability
+
+### Memory Management
+- Weak references for delegates
+- Careful capture list in closures
+- Audio buffer pooling (future)
+- Thumbnail cache for waveforms
+
+## Security & Sandboxing
+
+### Entitlements Required
+- `com.apple.security.files.user-selected.read-write`
+- `com.apple.security.device.audio-input`
+- `com.apple.security.device.microphone`
+
+### File Access
+- Sandbox-safe file bookmarks
+- Security-scoped resource access
+- Temporary directory for renders
+
+## Architectural Decisions
+
+### Decision: Pure SwiftUI
+**Rationale**: Modern, unified codebase across all Apple platforms  
+**Trade-offs**: Less control over custom drawing, but better platform integration  
+**Result**: Clean architecture, excellent platform adaptation
+
+### Decision: Singleton Audio Engine
+**Rationale**: Single source of truth for audio state, simplified management  
+**Implementation**: @MainActor singleton with published properties  
+**Result**: Clear state management, easy UI binding
 
 ### Decision: SwiftData over Core Data
-**Rationale**: Modern, Swift-native persistence with better type safety
-**Implementation**: Models as @Model classes with relationships
-**Result**: Cleaner code, better Swift integration
+**Rationale**: Modern Swift-first API, better type safety, cleaner code  
+**Trade-offs**: Newer technology, less documentation  
+**Result**: 50% less boilerplate, better Swift integration
 
-### Decision: macOS-First Development
-**Rationale**: Pro audio users primarily on desktop
-**Implementation**: Full features on macOS, adaptive subsets elsewhere
+### Decision: Desktop-First Development
+**Rationale**: Pro audio users primarily on macOS  
+**Implementation**: Full features on macOS, adapted subsets on iOS  
 **Result**: Professional desktop experience without compromising mobile
 
-### Decision: Defer Complex Audio Features
-**Rationale**: Establish stable UI/UX foundation first
-**Implementation**: Phase 1 focuses on visual editing, Phase 2 adds audio
-**Result**: More stable alpha build, clearer development path
+## Anti-Patterns to Avoid
+
+### ❌ Direct Audio Engine Access in Views
+```swift
+// WRONG
+struct TrackView: View {
+    let engine = AVAudioEngine() // Never!
+}
+
+// CORRECT
+struct TrackView: View {
+    @EnvironmentObject var audioEngine: AudioEngineService
+}
+```
+
+### ❌ Synchronous File Operations
+```swift
+// WRONG
+let data = try Data(contentsOf: audioFileURL) // Blocks UI
+
+// CORRECT
+Task {
+    let data = try await loadAudioFile(from: audioFileURL)
+}
+```
+
+### ❌ Massive View Bodies
+```swift
+// WRONG
+struct ContentView: View {
+    var body: some View {
+        // 500 lines of view code
+    }
+}
+
+// CORRECT
+struct ContentView: View {
+    var body: some View {
+        VStack {
+            HeaderSection()
+            MainContent()
+            FooterControls()
+        }
+    }
+}
+```
+
+## Future Architecture Considerations
+
+### Phase 2: Audio Implementation
+- Implement file playback pipeline
+- Add recording capabilities
+- Create waveform rendering system
+- Enable real-time monitoring
+
+### Phase 3: MIDI Support
+- CoreMIDI integration
+- MIDI routing architecture
+- Piano roll editor
+- MIDI effect chain
+
+### Phase 4: Plugin System
+- AudioUnit v3 hosting
+- Effect chain architecture
+- Parameter automation
+- Preset management
+
+### Phase 5: Collaboration
+- CloudKit project sharing
+- Real-time collaboration
+- Version control integration
+- Comment system
+
+## Architecture Quality Metrics
+
+### Current Strengths
+- ✅ Clean separation of concerns
+- ✅ Modern Swift patterns throughout
+- ✅ Platform-adaptive from day one
+- ✅ Prepared for complex audio routing
+- ✅ Type-safe API design
+
+### Areas for Improvement
+- ❌ No test coverage
+- ❌ Limited error handling
+- ❌ No performance profiling
+- ❌ Documentation gaps
+- ❌ Future OS deployment targets
+
+---
+
+**Note**: This architecture is actively evolving. The foundation is solid but audio implementation is pending. All architectural patterns have been validated through the UI shell implementation.
